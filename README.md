@@ -4,7 +4,7 @@ molecular
 se simula la dinámica de un conjunto de partículas
 (en una caja 3D, con condiciones periódicas de contorno)
 
-mediante dinamica molecular (integración numerica de ecuaciones diferenciales)
+mediante dinámica molecular (integración numerica de ecuaciones diferenciales)
 
 
 las partículas interactuan de a pares mediante el
