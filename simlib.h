@@ -15,78 +15,120 @@
 #define PP   7
 #define G    8
 #define D    9
-#define MODO 10
-#define PRMS 11
-
-#define MD   1
-#define MC   2
+#define PRMS 10
+#define TERM 11
+#define HEAD 12
+#define SAVE 13
+#define SPOS 13
+#define NSWITCHES	15
+#define NVARS 8
 
 #define X 0
 #define Y 1
 #define Z 2
 
-#define ERRMSG_DT "Reducir dt."
-
-//temporalmente... (porque lo que se quiere luego es que sea un parametro!!!)
-#define R_CORTE 2.5
-
 typedef double vector[3];
 
+static int flag;
+
 void imprimir_uso(char *av0) {
-	//while((c = getopt(ac,av,"n:t:d:p:h:i:q:c:m:z::"))!=-1) {
-  fprintf(stderr, "Uso: %s\n\t-m (define nro. de particulas N=4*m^3)\n\t-temp|-t (temperatura)\n\t-dens|-d (densidad)\n\t-dt|-h (delta tiempo)\n\t-pasos|-p (pasos)\n\t-pasosterm|-pt (pasos de termalizacion) [pt<=p]\n\t-cadapterm|-e (cada cuantos pasos de termalizacion ajustamos velocidades) [cadapterm<=pterm]\n\t-c (radio de corte)\n",av0);//\t-m c|d (modo de simulacion: mc|md)\n\t-z* (dr, opcional)\n\t-b* (nro bins para dist radial g(r),opcional)\n",av0);
+  fprintf(stderr,"Uso: %s\n\n      parametros requeridos:\n\t-m\t\tdefine cantidad de particulas N=4*m^3\n\t-t, --temp\ttemperatura\n\t-d, --dens\tdensidad\n\t-h, --dt\tpaso temporal\n\t-p, --pasos\tcantidad total de pasos a simular\n\t-s, --pasosterm\tcantidad de pasos de termalizacion [s<=p]\n\t-e, --cadapterm\tcada cuantos pasos de termalizacion ajustamos velocidades [cadapterm<=pterm]\n\n      evolucion temporal del sistema:\n\t--prk(i|p)\timprimir energia cinetica instantanea|promedio\n\t--prv(i|p)\timprimir energia potencial instantanea|promedio\n\t--prt(i|p)\timprimir temperatura instantanea|promedio\n\t--prp(i|p)\timprimir presion instantanea|promedio\n\t--prall(i|p)\timprimir todos los valores instantaneos|promedio\n\t--prall\t\timprimir todos los valores\n\t--prterm\timprimir etapa de termalizacion\n\n      funcion de distribucion radial:\n\t--fdr\t\tcalcular distribucion de funcion radial (flag)\n\t-b, --bins\tcant. de bins p/ la fdr\n\n      difusion:\n\t--dif\t\tcalcular difusion (flag)\n\t-1, --cadad\tcada cuantos pasos de evolucion se calculan distancias\n\t-2, --it0\tdefine cada cuantas veces que se calculan distancias\n\t\t\t se genera un nuevo origen de tiempos (cada it0*cadad pasos de evolucion)\n\t-3, --t0max\tcantidad de tiempos iniciales distintos a partir de los cuales se promedian distancias\n\t-4, --tmax\tcantidad de registros temporales para la curva distancia vs. tiempo\n\n      opcionales:\n\t--header\tincluir header en con datos de parametros\n\t-c, --rcorte\tradio de corte\n\t-w, --guardar\tguardar datos de {evolucion,fdr,difusion} (en [prefijo]{run,fdr,dif}.data)\n\t--pos\tguardar posiciones\n\n",av0);
 }
 
-void parametros(
-    int ac, char *av[],
-    int *s, int *m, int *p, int *pt, int *ct,
-    double *d, double *T,  double *dt, double *rc,
-    double *dr) {
-	// switches|flags para verificar que parametros fueron dados
-  int ssn=0, sst=0, ssd=0, ssp=0, ssdt=0, ssct=0, sspt=0, ssrc=0, ssdr=0;
-  char st[30];
-	int c;
+void serror(char *s) {
+	fprintf(stderr,"%s\n",s);
+	exit(EXIT_FAILURE);
+}
 
+void argumentos(
+    int ac, char *av[], int *s, int *m, int *p, int *pt, int *ct,
+    double *d, double *T,  double *dt, double *rc,
+		int *bins,
+		int *it0, int *t0max, int *tmax, int *cadad,
+		char *fnameprefix) {
+	// switches|flags para verificar que parametros fueron dados
+  int ssm=0, sst=0, ssd=0, ssp=0, ssdt=0, ssct=0, sspt=0, src=0; // (parametros)
+	int sfdr=0, sbins=0; // (funcion de dist. radial)
+	int sdif=0, sit0=0, st0max=0, stmax=0, scadad=0; // (difusion)
+	int c,j;
+
+	for (j=0;j<NSWITCHES;j++) s[j]=0; // switches=0
+
+	// barremos sobre los argumentos hasta que se acaben
 	while (1) {
-		static struct option long_options[] =
-			{
-				/* These options don’t set a flag.
-					 We distinguish them by their indices. */
-				{"m",  required_argument, 0, 'm'},
-				{"temp",  required_argument, 0, 't'},
-				{"dens",    required_argument, 0, 'd'},
-				{"dt",    required_argument, 0, 'h'},
-				{"pasos",    required_argument, 0, 'p'},
-				{"pasosterm",    required_argument, 0, 's'},
-				{"cadapterm",    required_argument, 0, 'e'},
-				{"rcorte",    optional_argument, 0, 'c'},
-				//{"file",    optional_argument, 0, 'f'},
-				{0, 0, 0, 0}
-			};
-		/* getopt_long stores the option index here. */
+		static struct option long_options[] = {
+			{"m", required_argument, 0, 'm'},
+			{"temp", required_argument, 0, 't'},
+			{"dens", required_argument, 0, 'd'},
+			{"dt", required_argument, 0, 'h'},
+			{"pasos", required_argument, 0, 'p'},
+			{"pasosterm", required_argument, 0, 's'},
+			{"cadapterm", required_argument, 0, 'e'},
+			{"guardar", optional_argument, 0, 'w'},
+			{"pos", optional_argument, 0, 'x'},
+			{"header", no_argument, &flag, HEAD},
+			{"rcorte", optional_argument, 0, 'c'},
+			{"prterm", no_argument, &flag, TERM},
+			{"pralli", no_argument, &flag, -1},
+			{"prki", no_argument, &flag, KI},
+			{"prvi", no_argument, &flag, VI},
+			{"prti", no_argument, &flag, TI},
+			{"prpi", no_argument, &flag, PI},
+			{"prallp", no_argument, &flag, -2},
+			{"prkp", no_argument, &flag, KP},
+			{"prvp", no_argument, &flag, VP},
+			{"prtp", no_argument, &flag, TP},
+			{"prpp", no_argument, &flag, PP},
+			{"prall",  no_argument, &flag, -3},
+			{"fdr",  no_argument, &flag, -111},
+			{"bins", optional_argument, 0, 'b'},
+			{"dif", no_argument, &flag, -222},
+			{"it0", optional_argument, 0,'1'},
+			{"t0max", optional_argument, 0,'2'},
+			{"tmax", optional_argument, 0,'3'},
+			{"cadad", optional_argument, 0,'4'},
+			{0, 0, 0, 0}
+		};
 		int option_index = 0;
 
-		c = getopt_long (ac, av, "m:t:d:h:p:s:e:c:",
+		c = getopt_long (ac, av, "m:t:d:h:p:s:e:c::w::b::1::2::3::4::x::",
 										 long_options, &option_index);
 
-		/* Detect the end of the options. */
-		if (c == -1) break;
+		if (c == -1) break; // fin de opciones
 
 		switch (c) {
-			/*
-			case 0:
-				if (long_options[option_index].flag != 0)
-					break;
-				printf ("option %s", long_options[option_index].name);
-				if (optarg)
-					printf (" with arg %s", optarg);
-				printf ("\n");
+			case 0: // flags
+				if(flag>=0) {
+					s[flag]=1;
+				} 
+				if(flag==-1) {
+					s[KI]=1; s[VI]=1;
+					s[TI]=1; s[PI]=1;
+				}
+				if (flag==-2) {
+					s[KP]=1; s[VP]=1;
+					s[TP]=1; s[PP]=1;
+				}
+				if (flag==-3) {
+					s[KI]=1; s[VI]=1;
+					s[TI]=1; s[PI]=1;
+					s[KP]=1; s[VP]=1;
+					s[TP]=1; s[PP]=1;
+				} 
+				if (flag==-111) {
+					// calculamos fdr
+					s[G]=1;
+					sfdr=1;
+				}
+				if (flag==-222) {
+					// calculamos difusion
+					s[D]=1;
+					sdif=1;
+				}
 				break;
-			*/
-
 			case 'm': // (define nro de particulas)
 				*m=atoi(optarg);
-				ssn=1;
+				ssm=1;
 				break;
 			case 't': // temperatura
 				*T=atof(optarg);
@@ -114,63 +156,105 @@ void parametros(
 				break;
 			case 'c': // radio de corte (rc)
 				*rc=atof(optarg);
-				ssrc=1;
+				src=1;
 				break;
-				/*
-			case 'm': // modo (moleculardynamics o montecarlo)
-				if(strcmp(optarg,"d")==0) {
-					s[MODO]=MD;
-				} else if (strcmp(optarg,"c")==0) {
-          s[MODO]=MC;
-				} else {
-					fprintf(stderr,"Modo desconocido");
-					abort();
-				}
+			case 'w': // guardar a archivo
+				// si hay argumento, uso eso como prefijo para nombre de archivo
+				if(optarg!=NULL)
+					strcpy(fnameprefix,optarg);
+				else
+					strcpy(fnameprefix,"");
+				s[SAVE]=1;
 				break;
-			case 'z': //dr
-				*dr=atof(optarg);
-				ssdr=1;
+			case 'x': // guardar a archivo
+				s[SPOS]=1;
 				break;
-				*/
+			case 'b': // cant. de bins (necesario solo si se pide calcular fdr)
+				if (optarg!=NULL) {
+					*bins=atoi(optarg);
+					sbins=1;
+				} else serror("Indicar bins de la forma -b<nro_bins>, sin espacios, o --bins=<nro_bins>");
+				break;
+			case '1': // 
+				if (optarg!=NULL) {
+					*cadad=atoi(optarg);
+					scadad=1;
+				} else serror("Indicar cadad de la forma -4<valor>, sin espacios, o --cadad=<valor>");
+				break;
+			case '2': // 
+				if (optarg!=NULL) {
+					*it0=atoi(optarg);
+					sit0=1;
+				} else serror("Indicar it0 de la forma -1<valor>, sin espacios, o --it0=<valor>");
+				break;
+			case '3': // 
+				if (optarg!=NULL) {
+					*tmax=atoi(optarg);
+					stmax=1;
+				} else serror("Indicar tmax de la forma -3<valor>, sin espacios, o --tmax=<valor>");
+				break;
+			case '4': // 
+				if (optarg!=NULL) {
+					*t0max=atoi(optarg);
+					st0max=1;
+				} else serror("Indicar t0max de la forma -2<valor>, sin espacios, o --t0max=<valor>");
+				break;
 			case '?': // ?
-				printf("what\n");
 				imprimir_uso(av[0]);
-				exit(1);
+				serror("Opcion desconocida");
 				break;
 			default:
-				imprimir_uso(av[0]);
-				printf("\n");
 				abort();
 		}
 	}
 
-	// por el momento solo modo MD
-	s[MODO]=MD;
-	ssrc=1;// por ahora, testing
+	// verificamos parametros necesarios
+  if(sst&&ssd&&ssm&&ssp&&ssdt&&ssct&&sspt) {
+		// verificamos que pasos>=pasosterm
+		if((*pt)>(*p)) serror("Se debe satisfacer pasos > pasosterm");
 
-  if(sst&&ssd&&ssn&&ssp&&ssdt&&ssct&&sspt&&ssrc) {
-    if(s[MODO]==MD) {
-      sprintf(st, "Dinamica Molecular");
-    } else if(s[MODO]==MC&&ssdr) {
-      sprintf(st, "Monte Carlo");
-    } else {printf("Indicar dr p/ MC\n");exit(1);} // parece q hace falta
+		// verificamos que se pide imprimir o calcular algo
+		c=0;
+		for (j=0;j<TERM;j++) c+=s[j];
+		c+=s[SPOS]; // imprimir posiciones cuenta como 'algo'
+		// contador hasta TERM para no contar el switch TERM (impr. term.)
+		if(c==0) {
+			imprimir_uso(av[0]);
+			serror("Sin flags, nada para calcular|imprimir\n\n");
+		}
 
-    printf("########################################\n");
-    printf("# Simulando en modo %s\n", st);
-    printf("# ======================================\n");
-    printf("# m = %d\n# (%d particulas)\n#\n", *m, 4*(*m)*(*m)*(*m));
-    printf("# Temperatura = %g\n", *T);
-    printf("# Densidad = %g\n", *d);
-    printf("# Pasos totales = %d\n", *p);
-    printf("# Paso de tiempo (dt) = %g\n", *dt);
-    printf("# Pasos de termalizacion = %d\n", *pt);
-    printf("# Intervalo de termalizacion = %d\n", *ct);
-    printf("# Radio de corte=%g\n", *rc);
-    printf("########################################\n");
-  } else {
-    fprintf(stderr, "Parametros insuficientes\n\n");
+		// si no se escogio radio de corte, ponemos rcorte=0.5*(lado de caja)/sqrt(3)
+		// que es la max distancia entre particulas (en caja con cond. periodicas)
+		// (lado de caja depende del nro de particulas y la densidad deseada)
+		if (!src)
+			(*rc) = (0.5/sqrt(3))*pow(4/(*d),1/3.)*(*m);
+
+		// verificamos que --fdr & --bins juntos
+		if(sfdr) {
+			if (!sbins) serror("Seleccionar bins");
+			else if (!((*bins)>0)) serror("Seleccionar nro. de bins (-b|--bins) > 0");
+		}	else {
+			if (sbins) serror("Flag --fdr no seleccionado");
+		}
+
+		// difusion: checkear aqui it0,tmax,etc
+		if(sdif) {
+			if(!(sit0&&stmax&&st0max&&scadad)) 
+				serror("Indicar valores it0,t0max,tmax,cadad p/ calcular difusion\n");
+			else {
+				if((*cadad)>0 && (*it0)>0 && (*t0max)>0 && (*t0max)>0) {
+					if((*cadad)*(*it0)*(*t0max)>(*p)-(*pt)) 
+					serror("Se debe satisfacer la inecuacion cadad*it0*t0max <= pasos-pasosterm");
+					else if( (*t0max)*(*it0)<(*tmax))
+						serror("Se debe cumplir t0max*it0 > tmax");
+				} else serror("Se debe cumplir que cadad,t0max,it0,tmax>0");
+			}
+		} else if(sit0||stmax||st0max||scadad) {
+			serror("Usar flag --dif p/ calcular difusion (y especificar it0,t0max,tmax,cadad)\n");
+		}
+	} else {
 		imprimir_uso(av[0]);
-    exit(1);
+		serror("Parametros insuficientes");
   }
 }
 
@@ -180,172 +264,27 @@ void iniciar_ctes(int *m, int *n, double *d, double *lcel, double *lcaj) {
   (*lcaj) = (*lcel)*(*m);
 }    
 
-void interruptores(int ac, char *av[], int *s) {
-	int j;
-	/*
-  int i=1,j,k=0;
-  char *cads[] = {
-    "ki", "vi", "ti", "pi",
-    "kp", "vp", "tp", "pp",
-     "g", "d"
-  };
-	*/
-
-  for(j=0;j<10;j++) s[j]=1; // todas on (para probar nomas)
-	/*
-  for(j=0;j<10;j++) s[j]=0;
-
-  while(i<ac&&av[i][0]!='-') {
-    for(j=0;j<10;j++) {
-      if(!strcmp(av[i],cads[j])) {
-        s[j]=1;
-        k++;
-      }
-    }
-    if(k!=i) {
-      fprintf(stderr, "No se reconoce la opcion ingresada.\nLas opciones disponibles son: ");
-      for(j=0;j<10;j++) fprintf(stderr, "%s ", cads[j]);
-      fprintf(stderr,"\n");
-      exit(EXIT_FAILURE);
-    }
-    i++;
-  }
-  if(k==0) {
-    fprintf(stderr, "Debe escoger al menos una opcion: ");
-    for(j=0;j<10;j++) fprintf(stderr, "%s ", cads[j]);
-    fprintf(stderr,"\n");
-    exit(EXIT_FAILURE);
-  }
-	*/
-}
-
-void dependencias(int *vs, int *s) {
+void dependencias(int *s, int *cs) {
   int k;
 
-  for(k=0;k<12;k++) {
-    if(k==MODO) continue;
-    else s[k]=0;
+  for(k=0;k<NSWITCHES;k++) {
+    cs[k]=s[k];
   }
-  
-  if(vs[KP]||vs[VP]||vs[TP]||vs[PP]||vs[G]) s[PRMS]=1;
-  if(s[PRMS]) {
-    if(vs[PP]) {
-      s[PP]=1;
-      s[PI]=1;
-      s[KP]=1;
-      s[PP]=1;
+
+  // si se calcula algun promedio, cs[PRMS]=1
+  if(s[KP]||s[VP]||s[TP]||s[PP]) cs[PRMS]=1;
+	// si se pidio calcular promedios, nos aseguramos de calcular valores inst.
+  if(cs[PRMS]) {
+    if(s[PP]) {
+      cs[PP]=1; cs[PI]=1; cs[KP]=1; cs[PP]=1;
     }
-    if(vs[TP]) {
-      s[TP]=1;
-      s[TI]=1;
-      if(s[MODO]==MD) {
-        s[KP]=1;
-        s[KI]=1;
-      }
+    if(s[TP]) {
+      cs[TP]=1; cs[TI]=1; cs[KP]=1; cs[KI]=1;
     }
-    if(vs[KP]) {
-      s[KP]=1;
-      s[KI]=1;
+    if(s[KP]) {
+      cs[KP]=1; cs[KI]=1;
     }
   }
-  for(k=0;k<KP;k++) {
-    if(vs[k]) s[k]=1;
-  }
-  for(k=8;k<MODO;k++) {
-    if(vs[k]) s[k]=1;
-  }
-  
-  if((s[MODO]==MC)&&(vs[KI]||vs[KP]||vs[G]||vs[TI]||vs[TP])) {
-    fprintf(stderr, "Se escogio una opcion no compatible con el modo MC.\n");
-    exit(EXIT_FAILURE);
-  }
-}
-
-void iniciar_ctes_g(int ac, char *av[], int *b) {
-  int i=1, c=0;
-
-	//testing
-	*b=10;
-
-	/*
-  while(i<ac) {
-    if (!strcmp(av[i],"-b")) {
-      if(i<ac-1&&av[i+1][0]!='-') {
-        *b=atoi(av[++i]);
-        c++;
-      } else {
-        printf("Especifique el valor para %s.\n",av[i]);
-        exit(1);
-      }
-    break;
-    }
-    i++;
-  }
-
-  if(c!=1) {
-    fprintf(stderr,"Especificar -b\n");
-    exit(1);
-  }
-	*/
-}
-
-void iniciar_ctes_d(int ac, char *av[], int *it0, int *t0max, int *tmax, int *cadad) {
-  int i=1, c=0;
-
-	//testing
-	*it0=4;
-	*t0max=100;
-	*tmax=300;
-	*cadad=1;
-
-	/*
-  while(i<ac) {
-    // it0
-    if (!strcmp(av[i],"-t0")) {
-      if(i<ac-1&&av[i+1][0]!='-') {
-        *it0=atoi(av[++i]);
-        c++;
-      } else {
-        printf("Especifique el valor para %s.\n",av[i]);
-        exit(1);
-      }
-    // t0max
-    } else if (!strcmp(av[i],"-t0m")) {
-      if(i<ac-1&&av[i+1][0]!='-') {
-        *t0max=atoi(av[++i]);
-        c++;
-      } else {
-        printf("Especifique el valor para %s.\n",av[i]);
-        exit(1);
-      }
-    // tmax
-    } else if (!strcmp(av[i],"-tm")) {
-      if(i<ac-1&&av[i+1][0]!='-') {
-        *tmax=atoi(av[++i]);
-        c++;
-      } else {
-        printf("Especifique el valor para %s.\n",av[i]);
-        exit(1);
-      }
-    // cadad
-    }  else if (!strcmp(av[i],"-cd")) {
-      if(i<ac-1&&av[i+1][0]!='-') {
-        *cadad=atoi(av[++i]);
-        c++;
-      } else {
-        printf("Especifique el valor para %s.\n",av[i]);
-        exit(1);
-      }
-    }
-    i++;
-  }
-
-  if(c!=4) {
-    fprintf(stderr, "Falta especificar alguno de los siguentes: -t0, -t0m, -tm, -cd\n");
-    exit(1);
-  }
-	*/
-
 }
 
 void iniciar_valores_inst(int *s, double *ki, double *vi, double *w) {
@@ -393,21 +332,6 @@ double ran1(long *idum) {
 	else return temp;
 }
 
-#undef IA
-#undef IM
-#undef AM
-#undef IQ
-#undef IR
-#undef NTAB
-#undef NDIV
-#undef EPS
-#undef RNMX
-
-void serror(char *s) {
-	fprintf(stderr,"%s\n",s);
-	exit(EXIT_FAILURE);
-}
-
 // gasdev, de Numerical Recipes in C
 double gasdev(long *idum) {
 	static int iset=0;
@@ -431,6 +355,16 @@ double gasdev(long *idum) {
 	}
 }
 
+#undef IA
+#undef IM
+#undef AM
+#undef IQ
+#undef IR
+#undef NTAB
+#undef NDIV
+#undef EPS
+#undef RNMX
+
 void iniciar_posiciones(int N, vector *p, double l) {
 	int m, i, j, k, q;
 	vector pos;
@@ -451,29 +385,6 @@ void iniciar_posiciones(int N, vector *p, double l) {
 			}
 }
 
-void cargar_posiciones(int N, vector *p, double l) {
-	FILE *f;
-	char fn[100], c;
-	int i,n=0;
-
-	printf("Archivo de posiciones: ('.' para posiciones.dat)\n");
-	scanf("%s",fn);
-	if(strcmp(fn,".")==0) sprintf(fn,"posiciones.dat");
-
-	if((f=fopen(fn,"r"))==NULL) serror("No se puede abrir el archivo.");
-
-	do {
-		c=getc(f);
-		if(c=='\n') n++;
-	} while(c!=EOF);
-	if(n!=N) serror("Numero de lineas y de particulas no concuerdan.");
-	rewind(f);
-
-	for(i=0;i<n;i++,p++) {
-		fscanf(f,"%lf\t%lf\t%lf\n",&((*p)[X]),&((*p)[Y]),&((*p)[Z]));
-	}
-}
-
 void iniciar_velocidades(int N, vector *v, double T) {
 	int i, k;
 	static long int s=0;
@@ -489,31 +400,88 @@ void iniciar_velocidades(int N, vector *v, double T) {
 	}
 }
 
+void imprimir_header(int *s, int m, int p, int pt, int ct,
+    double d, double T,  double dt, double rc, FILE *fout) {
+	int i;
+	char prtlabels[40] = "";
+	char *varlabel[] = {
+	"ki", "vi", "ti", "pi",
+	"kp", "vp", "tp", "pp"
+	};
+
+	// imprimo parametros
+	fprintf(fout,"# parametros: m = %d (N=%d particulas), ", m, 4*m*m*m);
+	fprintf(fout,"temperatura = %g, ", T);
+	fprintf(fout,"densidad = %g, ", d);
+	fprintf(fout,"dt = %g, ", dt);
+	fprintf(fout,"rcorte = %g, ", rc);
+	fprintf(fout,"pasos = %d, ", p);
+	fprintf(fout,"pasosterm = %d, ", pt);
+	fprintf(fout,"cadapterm = %d\n", ct);
+	// imprimo que se imprime de la simulacion
+	for (i=0; i<NVARS; i++) {
+		if(s[i]) strcat(prtlabels,", ");
+		if(s[i]) strcat(prtlabels,varlabel[i]);
+	}
+	fprintf(fout,"# imprimiendo: p, t%s\n",prtlabels);
+}
+
+// distancia (minima) entre dos particulas
+// (teniendo en cuenta condiciones periodicas de contorno en caja de lado l)
+double min_dist2(double *p_i, double *p_j, double l) {
+	int k;
+	double s=0;
+	double d;
+
+	for(k=0;k<3;k++) {
+		d=p_i[k]-p_j[k];
+
+		if(fabs(d)>0.5*l)
+			d-=(d>=0?l:-l);
+
+		s+=d*d;
+	}
+
+	return s;
+}
+
+double dist(double *p_i, double *p_j) {
+	int k;
+	double s=0;
+
+	for(k=0;k<3;k++,p_i++,p_j++)
+		s+=(*p_i-*p_j)*(*p_i-*p_j);
+
+	return sqrt(s);
+}
+
 void sumar_fuerza(
 		double *p_i, double *p_j,
 		double *f_i, double *f_j,
 		double *w_inst, double *energia_p_inst,	double l, 
-		int s_fuerza, int s_presion_inst, int s_ep_inst
-		) {
-	static double rc2 = R_CORTE*R_CORTE;
+		int s_fuerza, int s_presion_inst, int s_ep_inst,
+		double rcorte) {
+	double rc2 = rcorte*rcorte;
 	int k;
-	double r2=0, rm2, rm6, f;
+	double r2, rm2, rm6, f;
 	vector d;
 
-	for(k=0;k<3;k++,p_i++,p_j++) {
-		d[k]=*p_i-*p_j;
-
+	// calculamos distancia minima entre el par
+	// (considerando condiciones periodicas de contorno)
+	for(k=0;k<3;k++) {
+		d[k]=p_i[k]-p_j[k];
 		if(fabs(d[k])>0.5*l)
 			d[k]-=(d[k]>=0?l:-l);
 	}
+	r2=0;
+	for(k=0;k<3;k++)
+		r2+=d[k]*d[k];
 
-	for(k=0;k<3;k++) r2+=d[k]*d[k];
 	if(r2>=rc2) return;
 	if(r2==0) r2=1e-6;
 
 	rm2=1/r2;
 	rm6=rm2*rm2*rm2;
-
 	f=48*(rm6*(rm6-0.5));
 
 	if(s_fuerza) {
@@ -562,195 +530,89 @@ void termalizar(int N, vector *v, double T, double T_inst) {
 		for(k=0;k<3;k++) (*v)[k]*=a;
 }
 
-double min_dist2(double *p_i, double *p_j, double l) {
-	int k;
-	double s=0;
-	vector d;
-
-	for(k=0;k<3;k++,p_i++,p_j++) {
-		d[k]=*p_i-*p_j;
-
-		if(fabs(d[k])>0.5*l)
-			d[k]-=(d[k]>=0?l:-l);
-
-		s+=d[k]*d[k];
-	}
-
-	return s;
-}
-
-double dist(double *p_i, double *p_j) {
-	int k;
-	double s=0;
-
-	for(k=0;k<3;k++,p_i++,p_j++)
-		s+=(*p_i-*p_j)*(*p_i-*p_j);
-
-	return sqrt(s);
-}
-
-double pasitoMC(int N, int n, vector *p, double l, double T, double *dr, double *a) {
-	int i, k;
-	static int acep=0, reje=0, setdr=0;
-	static double rcorte2=R_CORTE*R_CORTE, ds=0;
-	double r2, rm6;
-	vector *pn=&(p[n]),*p0=p;
-	vector pp;
-	double u=0, u0=0, du=0;
-	static long int s=0;
-
-	if(!s) srand(time(NULL));
-	s=-(long)rand();
-
-	if(!setdr) {
-		ds=*dr;
-		setdr=1;
-	}
-	else if(*dr!=ds) {
-		acep=0;
-		reje=0;
-		ds=*dr;
-	}
-
-	for(i=0;i<N;i++,p++) {
-		if(i!=n) {
-		 	r2=min_dist2(*p,*pn,l);
-			
-			if(r2<rcorte2) {
-				rm6=pow(r2,-3);
-				u0+=4*rm6*(rm6-1);
-			}
-		}
-	}
-
-	for(k=0;k<3;k++) {
-		pp[k]=(*pn)[k]+ds*(ran1(&s)-0.5);
-		if(pp[k]>l) pp[k]-=l;
-		else if (pp[k]<0) pp[k]+=l;
-	}
-
-	for(i=0,p=p0;i<N;i++,p++) {
-		if(i!=n) {
-		 	r2=min_dist2(*p,pp,l);
-			if(r2<rcorte2) {
-				rm6=pow(r2,-3);
-				u+=4*rm6*(rm6-1);
-			}
-		}
-	}
-
-  du=u-u0;
-	if(ran1(&s)<exp(-du/T)) {
-		for(k=0;k<3;k++) (*pn)[k]=pp[k];
-		acep++;
-	} else {
-		du=0;
-		reje++;
-	}
-
-	*a=((double)acep)/((double)(acep+reje));
-
-	return du;
-}
-
-double calcular_energia_p(int N, vector *p, double l) {
-	double r2, rm6;
-	double v=0;
-	static double rc2=R_CORTE*R_CORTE;
-	int i, j;
-
-	for(i=0;i<N;i++) {
-		for(j=i+1;j<N;j++) {
-			r2=min_dist2(p[i],p[j],l);
-			if(r2>=rc2) continue;
-			rm6=pow(r2,-3);
-			v+=rm6*(rm6-1);
-		}
-	}
-	v*=4;
-
-	return v;
-}
-
-double calcular_presion(int N, vector *p, double l, double T, double d) {
-	int i, j;
-	static double rc2=R_CORTE*R_CORTE;
-	double r2, rm6, w=0;
-
-	for(i=0;i<N;i++) {
-		for(j=i+1;j<N;j++) {
-			r2=min_dist2(p[i],p[j],l);
-			if(r2<rc2) {
-				rm6=pow(r2,-3);
-				w+=rm6*(rm6-0.5);
-			}
-		}
-	}
-	w*=48;
-
-	return d*(T+(w/(3*N)));
-}
-
-void fdistradial(int N, vector *p, double l, int b) {
+// funcion de distribucion radial
+// esta funcion tiene 2 usos, dependiendo del valor de b; si b>0,
+// se utiliza para inicializar las variables y hacer memoria;
+// de otra forma, se utiliza para imprimir los valores de la fdr
+void fdistradial(int N, vector *p, double l, int b, int *switches, char *fnameprefix) {
 	static double *distribucion;
 	static long int n=0;
 	static int gset=0, bins=0;
 	static double hl, dr;
 	double v, nn;
 	int i,j;
+	FILE *outputfile=stdout;
+	char outputfname[120]="";
 
 	if(b>0) {
 		if(!gset) {
 			hl=l*0.5;
 			bins=b;
-			distribucion=(double*)malloc(sizeof(double)*(bins+1));
+			//distribucion=(double*)malloc(sizeof(double)*(bins+1));
+			distribucion=(double*)calloc(bins+1,sizeof(double));
 			if(distribucion==NULL) serror("Memoria insuficiente. Reduzca numero de bins.");
-
-			gset=1;
 			dr=hl/((double)bins);
+			gset=1;
 		}
 		else {
 			n++;
+			// recorremos pares de particulas
 			for(i=0;i<N-1;i++) {
 				for(j=i+1;j<N;j++) {
+					//printf("saving... ");
+					//bintosaveto=(int)floor(sqrt(min_dist2(p[i],p[j],l))/dr);
 					distribucion[(int)floor(sqrt(min_dist2(p[i],p[j],l))/dr)]+=2.;
+					//distribucion[bintosaveto]+=2.;
+					//printf("...saved\n");
 				}
 			}
 		}
-	} 
-	else {
-		printf("\n\n");
+	} else {
+		if(switches[SAVE]) { // si se pide imprimir en archivo...
+			strcpy(outputfname,fnameprefix); strcat(outputfname,"fdr.data");
+			outputfile=fopen(outputfname,"w");
+			if(outputfile==NULL)
+				serror("Error el abrir archivo para guardar fdr.");
+		}
+		
+		if(switches[HEAD]) // imprimir header si se pide
+			fprintf(outputfile,"# funcion de distribucion radial (bins=%d)\n",bins);
+
 		for(i=1;i<=bins;i++) {
 			v=(pow(i+1,3)-pow(i,3))*pow(dr,3);
-			nn=(4/3.)*3.141593*v*l;
+			nn=(4/3.)*PI*v*l;
 			
-			printf("%e\t%e\n",dr*(i+0.5),(distribucion[i-1])/(n*nn*N));
+			fprintf(outputfile,"%e %e\n",dr*(i+0.5),(distribucion[i-1])/(n*nn*N));
 		}
-		// no entiendo por que me da segfault con estoooo!!!! si saco esta todo bien, supongo que no hace mucho dano al mundo
-    //free(distribucion);
+
+    free(distribucion);
+		// cerrar archivo (si se abrio)
+		if(switches[SAVE]) fclose(outputfile);
 	}
 }
 
-/* parametros:
-	 it0 (indica cada cuantos muestreos tengo un nuevo origen de tiempos),
-	 tmax, indica la cantidad maxima de deltat (dentro de la rutina),
-	 t0max, (cadad,timestep (al final))
-*/
-// quiero pasarle la posicion de las particulas (sin verificar condiciones de contorno, a partir de que finaliza la termalizacion)
-// para el final necesito pasarle 'cadad'
-void difusion(int N, vector *x, int it0, int t0max, int tmax, double dtime) {
-	static int dset=0, ntel=0, t0=0, *time0;
+void difusion(int N, vector *x,
+		int it0, int t0max, int tmax, int cadad, double dtime,
+		int *switches, char *fnameprefix) {
+	static int
+		dset=0, // una vez que se inicializa la funcion, dset=1
+		ntel=0, // contador de llamadas a esta funcion (una vez iniciada)
+		t0=0,
+		*time0;
 	static double *ntime, *r2t;
 	static vector **x0;
 	int i, k, l, tt0, delt;
+	FILE *outputfile=stdout;
+	char outputfname[120]="";
 
-	// inicializar variables para coef de difusion...
+	// inicializar variables para calcular difusion vs tiempo
 	// ntel=0,r2t[0:tmax-1]=0,ntime[0:tmax-1],dtime=dt*cadad
 	//	(se muestrea cada cadad pasos) 
-	//
+	
+	// if (x!=NULL) { if(!dset) iniciar(); else muestrear() } else imprimir();
 	if(x!=NULL) {
-		if(!dset) {
-			// alocar memoria para vectores double 0:tmax-1; ntime, vacf y r2t
+		if(!dset) { // si es la primera vez que se llama a esta funcion...
+			// hacemos memoria para vectores double 0:tmax-1; ntime, r2t
 			ntime=(double *)malloc(sizeof(double)*(tmax+1));
 			r2t=(double *)malloc(sizeof(double)*(tmax+1));	
 			time0=(int *)malloc(sizeof(int)*(t0max+1));
@@ -761,14 +623,11 @@ void difusion(int N, vector *x, int it0, int t0max, int tmax, double dtime) {
 				if(x0[i]==NULL) serror("Error al alocar memoria. Disminuir t0max");
 			}
 
-			// VERIFICAR ALOCAMIENTO CORRECTO!!!!
 			if(ntime==NULL||r2t==NULL)
 				serror("No se ha podido alocar memoria. Reducir tmax o algun otro parametro.");
 			dset=1;
 		}
-		// muestreamos cada 'cadad' pasos luego de la termalizacion
-		// (en esta parte no existe referencia a 'cadad')
-		else /**/ {
+		else /* muestreamos */ {
 			// nuevo origen de tiempos, cada cadad*it0 pasos
 			if(ntel%it0==0) {
 				tt0=t0%t0max;
@@ -795,12 +654,23 @@ void difusion(int N, vector *x, int it0, int t0max, int tmax, double dtime) {
 		}
 	}
 	else {
-		printf("\n\n");
-		for(i=0;i<tmax;i++) {
-			// t0max<-cadad (p/ ahorrar unos cuantos bits)
-			r2t[i]/=t0max*ntime[i];
-			printf("%e\t%e\n",dtime*(i+0.5), r2t[i]);
+		if(switches[SAVE]) { // si se pide imprimir en archivo...
+			strcpy(outputfname,fnameprefix); strcat(outputfname,"dif.data");
+			outputfile=fopen(outputfname,"w");
+			if(outputfile==NULL)
+				serror("Error el abrir archivo para guardar dif.");
 		}
+		
+		if(switches[HEAD]) // imprimir header si se pide
+			fprintf(outputfile,
+					"# difusion vs. t (it0=%d, t0max=%d, tmax=%d, cadad=%d)\n",
+					it0,t0max,tmax,cadad);
+
+		for(i=0;i<tmax;i++) {
+			r2t[i]/=cadad*ntime[i];
+			fprintf(outputfile,"%e\t%e\n",dtime*(i+0.5), r2t[i]);
+		}
+		// cerrar archivo
 		free(ntime);
 		free(r2t);
 		free(time0);
@@ -811,22 +681,21 @@ void difusion(int N, vector *x, int it0, int t0max, int tmax, double dtime) {
 	}
 }
 
-/*
-void visualizar(vector *p) {
+void guardar_posiciones(int n, double t, vector *p, FILE *f) {
 	int i,k;
-	FILE *f = fopen("datapos","w"); 
-	FILE *pipe = popen("gnuplot -p","w");
+	//FILE *f = fopen("datapos","w"); 
+	//FILE *pipe = popen("gnuplot -p","w");
 
-	for(i=0;i<NUM_PARTICULAS;i++,p++) {
+	fprintf(f,"%e",t);
+	for(i=0;i<n;i++) {
 		for(k=0;k<3;k++) {
-			fprintf(f,"%e\t",(*p)[k]);
+			fprintf(f," %e",p[i][k]);
 		}
-		printf("\n");
 	}
-	fclose(f);
+	fprintf(f,"\n");
+	//fclose(f);
 
-	fprintf(pipe, "splot \"datapos\" pt 7\n");
-	fclose(pipe);
-}*/
-
+	//fprintf(pipe, "splot \"datapos\" pt 7\n");
+	//fclose(pipe);
+}
 
