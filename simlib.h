@@ -225,11 +225,11 @@ void argumentos(
 			serror("Sin flags, nada para calcular|imprimir\n\n");
 		}
 
-		// si no se escogio radio de corte, ponemos rcorte=0.5*(lado de caja)/sqrt(3)
+		// si no se escogio radio de corte, ponemos rcorte=0.5*sqrt(3)*(lado de caja)
 		// que es la max distancia entre particulas (en caja con cond. periodicas)
 		// (lado de caja depende del nro de particulas y la densidad deseada)
 		if (!src)
-			(*rc) = (0.5/sqrt(3))*pow(4/(*d),1/3.)*(*m);
+			(*rc) = 0.5*sqrt(3)*pow(4/(*d),1/3.)*(*m);
 
 		// verificamos que --fdr & --bins juntos
 		if(sfdr) {
@@ -539,7 +539,6 @@ void fdistradial(int N, vector *p, double l, int b, int *switches, char *fnamepr
 		if(!gset) {
 			hl=l*0.5;
 			bins=b;
-			//distribucion=(double*)malloc(sizeof(double)*(bins+1));
 			distribucion=(double*)calloc(bins+1,sizeof(double));
 			if(distribucion==NULL) serror("Memoria insuficiente. Reduzca numero de bins.");
 			dr=hl/((double)bins);
@@ -552,7 +551,10 @@ void fdistradial(int N, vector *p, double l, int b, int *switches, char *fnamepr
 				for(j=i+1;j<N;j++) {
 					//printf("saving... ");
 					//bintosaveto=(int)floor(sqrt(min_dist2(p[i],p[j],l))/dr);
+					
 					distribucion[(int)floor(sqrt(min_dist2(p[i],p[j],l))/dr)]+=2.;
+					//distribucion[(int)floor(sqrt(min_dist2(p[i],p[j],l))/dr)%(bins+1)]+=2.;
+
 					//distribucion[bintosaveto]+=2.;
 					//printf("...saved\n");
 				}
