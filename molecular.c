@@ -31,8 +31,17 @@ int main(int argc, char *argv[]) {
   vector *posicion, *velocidad, *fuerza;
   vector *x; double dx_k;
 	// output file
-	FILE *rundatafile=stdout, *posdatafile;
-	char fnameprefix[100]="",rundatafname[110]="",posdatafname[110]="";
+	FILE *rundatafile=stdout, *infodatafile=stdout, *posdatafile;
+	char fnameprefix[FNAMELEN]="",
+			 rundatafname[FNAMELEN]="",
+			 posdatafname[FNAMELEN]="",
+			 infodatafname[FNAMELEN]="";
+	char prtlabels[40] = "";
+	char *varlabel[] = {
+	"ki", "vi", "ti", "pi",
+	"kp", "vp", "tp", "pp"
+	};
+
 
 	// pa es un array de punteros a las distintas variables
 	// (usado para ordenarlas con un indice)
@@ -85,23 +94,38 @@ int main(int argc, char *argv[]) {
 	if(switches[D]) s_c_difusion=0;
 	
 	// si se pidio imprimir la evolucion de alguna variable...
-	if(cv>0) {
 		// si se pidio guardar a un archivo...
-		if(switches[SAVE]) {
-			// creamos un archivo para guardar 
+	if(switches[SAVE]) {
+		// abrimos archivo 'info'
+		strcpy(infodatafname,fnameprefix); strcat(infodatafname,"info.data");
+		infodatafile=fopen(infodatafname,"w");
+		if(infodatafile==NULL)
+			serror("Error al abrir archivo p/ guardar info \
+					(parametros y condiciones) de simulacion.");
 			
-			// si se pidio imprimir alguna variable (o todas)... PENDIENTE
+		// abrimos archivo 'run' (si se pidio imprimir alguna variable)
+		if(cv>0) {
 			strcpy(rundatafname,fnameprefix); strcat(rundatafname,"run.data");
 			rundatafile=fopen(rundatafname,"w");
 			if(rundatafile==NULL)
 				serror("Error al abrir archivo p/ guardar evolucion vs. tiempo.");
 		} // de otra forma, rundatafile=stdout
-		// si se pide imprimir info, imprimimos
-		if(switches[INFO])
-			imprimir_info(switches, m,	pasos, p_termalizacion, cadapterm,
-				densidad, temperatura, dt, rcorte, lado_caja, rundatafile);
 	}
-	// si se pidio guardar posiciones
+
+	// si se pide imprimir info, imprimimos
+	if(switches[INFO]) {
+		imprimir_info(switches, m,	pasos, p_termalizacion, cadapterm,
+			densidad, temperatura, dt, rcorte, lado_caja, infodatafile);
+		// muestro que se imprime de la simulacion (si se imprime)
+		if(cv>0) {
+			for (i=0; i<NVARS; i++) {
+				if(switches[i]) strcat(prtlabels,", ");
+				if(switches[i]) strcat(prtlabels,varlabel[i]);
+			}
+			fprintf(rundatafile,"# simulacion (p, t%s)\n",prtlabels);
+		}
+	}
+	// si se pidio guardar posiciones (no se imprime en pantalla)
 	if(switches[SPOS]) {
 		strcpy(posdatafname,fnameprefix); strcat(posdatafname,"pos.data");
 			posdatafile=fopen(posdatafname,"w");
@@ -229,8 +253,11 @@ int main(int argc, char *argv[]) {
 	/////////////////////////////////////////////////////////
 		
 	// cerrar archivos, si se abrio alguno
-	if(switches[SAVE]) fclose(rundatafile);
-	if(switches[SPOS]) fclose(posdatafile);
+	if(switches[SAVE]) {
+		fclose(infodatafile);
+		fclose(rundatafile);
+		fclose(posdatafile);
+	}
 	// imprimimos los resultados de fdr y dist (si se pidio computar)
 	// y liberamos memoria para terminar
   if(switches[G]) {

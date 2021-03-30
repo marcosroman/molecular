@@ -5,6 +5,8 @@
 #include <string.h>
 #include <getopt.h>
 
+#define FNAMELEN 120
+
 #define KI   0
 #define VI   1
 #define TI   2
@@ -402,16 +404,9 @@ void iniciar_velocidades(int N, vector *v, double T) {
 
 void imprimir_info(int *s, int m, int p, int pt, int ct,
     double d, double T,  double dt, double rc, double l, FILE *fout) {
-	int i;
-	char prtlabels[40] = "";
-	char *varlabel[] = {
-	"ki", "vi", "ti", "pi",
-	"kp", "vp", "tp", "pp"
-	};
-
 	// imprimo parametros
 	fprintf(fout,"# m = %d\n", m);
-	fprintf(fout,"# N = %d\n", 4*m*m*m);
+	fprintf(fout,"# n = %d\n", 4*m*m*m);
 	fprintf(fout,"# temperatura = %g\n", T);
 	fprintf(fout,"# densidad = %g\n", d);
 	fprintf(fout,"# lado_caja = %g\n", l);
@@ -420,12 +415,6 @@ void imprimir_info(int *s, int m, int p, int pt, int ct,
 	fprintf(fout,"# pasos = %d\n", p);
 	fprintf(fout,"# pasosterm = %d\n", pt);
 	fprintf(fout,"# cadapterm = %d\n", ct);
-	// imprimo que se imprime de la simulacion
-	for (i=0; i<NVARS; i++) {
-		if(s[i]) strcat(prtlabels,", ");
-		if(s[i]) strcat(prtlabels,varlabel[i]);
-	}
-	fprintf(fout,"# simulacion :: imprimiendo: p, t%s\n",prtlabels);
 }
 
 // distancia (minima) entre dos particulas
