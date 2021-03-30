@@ -410,21 +410,22 @@ void imprimir_info(int *s, int m, int p, int pt, int ct,
 	};
 
 	// imprimo parametros
-	fprintf(fout,"# parametros: m = %d (N=%d particulas), ", m, 4*m*m*m);
-	fprintf(fout,"temperatura = %g, ", T);
-	fprintf(fout,"densidad = %g, ", d);
-	fprintf(fout,"lado_caja = %g, ", l);
-	fprintf(fout,"dt = %g, ", dt);
-	fprintf(fout,"rcorte = %g, ", rc);
-	fprintf(fout,"pasos = %d, ", p);
-	fprintf(fout,"pasosterm = %d, ", pt);
-	fprintf(fout,"cadapterm = %d\n", ct);
+	fprintf(fout,"# m = %d\n", m);
+	fprintf(fout,"# N = %d\n", 4*m*m*m);
+	fprintf(fout,"# temperatura = %g\n", T);
+	fprintf(fout,"# densidad = %g\n", d);
+	fprintf(fout,"# lado_caja = %g\n", l);
+	fprintf(fout,"# rcorte = %g\n", rc);
+	fprintf(fout,"# dt = %g\n", dt);
+	fprintf(fout,"# pasos = %d\n", p);
+	fprintf(fout,"# pasosterm = %d\n", pt);
+	fprintf(fout,"# cadapterm = %d\n", ct);
 	// imprimo que se imprime de la simulacion
 	for (i=0; i<NVARS; i++) {
 		if(s[i]) strcat(prtlabels,", ");
 		if(s[i]) strcat(prtlabels,varlabel[i]);
 	}
-	fprintf(fout,"# imprimiendo: p, t%s\n",prtlabels);
+	fprintf(fout,"# simulacion :: imprimiendo: p, t%s\n",prtlabels);
 }
 
 // distancia (minima) entre dos particulas
