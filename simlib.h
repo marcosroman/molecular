@@ -529,7 +529,7 @@ void fdistradial(int N, vector *p, double l, int b, int *switches, char *fnamepr
 	static double *distribucion;
 	static long int n=0;
 	static int gset=0, bins=0;
-	static double hl, dr;
+	static double maxdist, dr;
 	double v, nn;
 	int i,j;
 	FILE *outputfile=stdout;
@@ -537,11 +537,11 @@ void fdistradial(int N, vector *p, double l, int b, int *switches, char *fnamepr
 
 	if(b>0) {
 		if(!gset) {
-			hl=l*0.5;
+			maxdist=l*0.5*sqrt(3);
 			bins=b;
 			distribucion=(double*)calloc(bins+1,sizeof(double));
 			if(distribucion==NULL) serror("Memoria insuficiente. Reduzca numero de bins.");
-			dr=hl/((double)bins);
+			dr=maxdist/((double)bins);
 			gset=1;
 		}
 		else {
