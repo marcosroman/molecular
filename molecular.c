@@ -88,14 +88,17 @@ int main(int argc, char *argv[]) {
 	if(cv>0) {
 		// si se pidio guardar a un archivo...
 		if(switches[SAVE]) {
+			// creamos un archivo para guardar 
+			
+			// si se pidio imprimir alguna variable (o todas)... PENDIENTE
 			strcpy(rundatafname,fnameprefix); strcat(rundatafname,"run.data");
 			rundatafile=fopen(rundatafname,"w");
 			if(rundatafile==NULL)
 				serror("Error al abrir archivo p/ guardar evolucion vs. tiempo.");
 		} // de otra forma, rundatafile=stdout
-		// si se pide imprimir header, imprimimos
-		if(switches[HEAD])
-			imprimir_header(switches, m,	pasos, p_termalizacion, cadapterm,
+		// si se pide imprimir info, imprimimos
+		if(switches[INFO])
+			imprimir_info(switches, m,	pasos, p_termalizacion, cadapterm,
 				densidad, temperatura, dt, rcorte, lado_caja, rundatafile);
 	}
 	// si se pidio guardar posiciones
@@ -104,8 +107,8 @@ int main(int argc, char *argv[]) {
 			posdatafile=fopen(posdatafname,"w");
 			if(posdatafile==NULL)
 				serror("Error al abrir archivo p/ guardar posiciones vs tiempo.");
-		// si se pide imprimir header, imprimimos
-		if(switches[HEAD])
+		// si se pide imprimir info, imprimimos
+		if(switches[INFO])
 			fprintf(posdatafile,
 					"# posiciones vs t (t x0[0] x0[1] x0[2] ... xn[0] xn[1] xn[2])\n");
 	}

@@ -17,7 +17,7 @@
 #define D    9
 #define PRMS 10
 #define TERM 11
-#define HEAD 12
+#define INFO 12
 #define SAVE 13
 #define SPOS 13
 #define NSWITCHES	15
@@ -32,7 +32,7 @@ typedef double vector[3];
 static int flag;
 
 void imprimir_uso(char *av0) {
-  fprintf(stderr,"Uso: %s\n\n      parametros requeridos:\n\t-m\t\tdefine cantidad de particulas N=4*m^3\n\t-t, --temp\ttemperatura\n\t-d, --dens\tdensidad\n\t-h, --dt\tpaso temporal\n\t-p, --pasos\tcantidad total de pasos a simular\n\t-s, --pasosterm\tcantidad de pasos de termalizacion [s<=p]\n\t-e, --cadapterm\tcada cuantos pasos de termalizacion ajustamos velocidades [cadapterm<=pterm]\n\n      evolucion temporal del sistema:\n\t--prk(i|p)\timprimir energia cinetica instantanea|promedio\n\t--prv(i|p)\timprimir energia potencial instantanea|promedio\n\t--prt(i|p)\timprimir temperatura instantanea|promedio\n\t--prp(i|p)\timprimir presion instantanea|promedio\n\t--prall(i|p)\timprimir todos los valores instantaneos|promedio\n\t--prall\t\timprimir todos los valores\n\t--prterm\timprimir etapa de termalizacion\n\n      funcion de distribucion radial:\n\t--fdr\t\tcalcular distribucion de funcion radial (flag)\n\t-b, --bins\tcant. de bins p/ la fdr\n\n      difusion:\n\t--dif\t\tcalcular difusion (flag)\n\t-1, --cadad\tcada cuantos pasos de evolucion se calculan distancias\n\t-2, --it0\tdefine cada cuantas veces que se calculan distancias\n\t\t\t se genera un nuevo origen de tiempos (cada it0*cadad pasos de evolucion)\n\t-3, --t0max\tcantidad de tiempos iniciales distintos a partir de los cuales se promedian distancias\n\t-4, --tmax\tcantidad de registros temporales para la curva distancia vs. tiempo\n\n      opcionales:\n\t--header\tincluir header en con datos de parametros\n\t-c, --rcorte\tradio de corte\n\t-w, --guardar\tguardar datos de {evolucion,fdr,difusion} (en [prefijo]{run,fdr,dif}.data)\n\t--pos\tguardar posiciones\n\n",av0);
+  fprintf(stderr,"Uso: %s\n\n      parametros requeridos:\n\t-m\t\tdefine cantidad de particulas N=4*m^3\n\t-t, --temp\ttemperatura\n\t-d, --dens\tdensidad\n\t-h, --dt\tpaso temporal\n\t-p, --pasos\tcantidad total de pasos a simular\n\t-s, --pasosterm\tcantidad de pasos de termalizacion [s<=p]\n\t-e, --cadapterm\tcada cuantos pasos de termalizacion ajustamos velocidades [cadapterm<=pterm]\n\n      evolucion temporal del sistema:\n\t--prk(i|p)\timprimir energia cinetica instantanea|promedio\n\t--prv(i|p)\timprimir energia potencial instantanea|promedio\n\t--prt(i|p)\timprimir temperatura instantanea|promedio\n\t--prp(i|p)\timprimir presion instantanea|promedio\n\t--prall(i|p)\timprimir todos los valores instantaneos|promedio\n\t--prall\t\timprimir todos los valores\n\t--prterm\timprimir etapa de termalizacion\n\n      funcion de distribucion radial:\n\t--fdr\t\tcalcular distribucion de funcion radial (flag)\n\t-b, --bins\tcant. de bins p/ la fdr\n\n      difusion:\n\t--dif\t\tcalcular difusion (flag)\n\t-1, --cadad\tcada cuantos pasos de evolucion se calculan distancias\n\t-2, --it0\tdefine cada cuantas veces que se calculan distancias\n\t\t\t se genera un nuevo origen de tiempos (cada it0*cadad pasos de evolucion)\n\t-3, --t0max\tcantidad de tiempos iniciales distintos a partir de los cuales se promedian distancias\n\t-4, --tmax\tcantidad de registros temporales para la curva distancia vs. tiempo\n\n      opcionales:\n\t--info\tincluir info de parametros y que se imprime\n\t-c, --rcorte\tradio de corte\n\t-w, --guardar\tguardar datos de {evolucion,fdr,difusion} (en [prefijo]{run,fdr,dif}.data)\n\t--pos\tguardar posiciones\n\n",av0);
 }
 
 void serror(char *s) {
@@ -66,7 +66,7 @@ void argumentos(
 			{"cadapterm", required_argument, 0, 'e'},
 			{"guardar", optional_argument, 0, 'w'},
 			{"pos", optional_argument, 0, 'x'},
-			{"header", no_argument, &flag, HEAD},
+			{"info", no_argument, &flag, INFO},
 			{"rcorte", optional_argument, 0, 'c'},
 			{"prterm", no_argument, &flag, TERM},
 			{"pralli", no_argument, &flag, -1},
@@ -400,7 +400,7 @@ void iniciar_velocidades(int N, vector *v, double T) {
 	}
 }
 
-void imprimir_header(int *s, int m, int p, int pt, int ct,
+void imprimir_info(int *s, int m, int p, int pt, int ct,
     double d, double T,  double dt, double rc, double l, FILE *fout) {
 	int i;
 	char prtlabels[40] = "";
@@ -576,7 +576,7 @@ void fdistradial(int N, vector *p, double l, int b, int *switches, char *fnamepr
 				serror("Error el abrir archivo para guardar fdr.");
 		}
 		
-		if(switches[HEAD]) // imprimir header si se pide
+		if(switches[INFO]) // imprimir info si se pide
 			fprintf(outputfile,"# funcion de distribucion radial (bins=%d)\n",bins);
 
 		for(i=1;i<=bins;i++) {
@@ -662,7 +662,7 @@ void difusion(int N, vector *x,
 				serror("Error el abrir archivo para guardar dif.");
 		}
 		
-		if(switches[HEAD]) // imprimir header si se pide
+		if(switches[INFO]) // imprimir info si se pide
 			fprintf(outputfile,
 					"# difusion vs. t (it0=%d, t0max=%d, tmax=%d, cadad=%d)\n",
 					it0,t0max,tmax,cadad);
