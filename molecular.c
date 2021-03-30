@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
 		// si se pide imprimir header, imprimimos
 		if(switches[HEAD])
 			imprimir_header(switches, m,	pasos, p_termalizacion, cadapterm,
-				densidad, temperatura, dt, rcorte, rundatafile);
+				densidad, temperatura, dt, rcorte, lado_caja, rundatafile);
 	}
 	// si se pidio guardar posiciones
 	if(switches[SPOS]) {

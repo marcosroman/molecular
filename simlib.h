@@ -401,7 +401,7 @@ void iniciar_velocidades(int N, vector *v, double T) {
 }
 
 void imprimir_header(int *s, int m, int p, int pt, int ct,
-    double d, double T,  double dt, double rc, FILE *fout) {
+    double d, double T,  double dt, double rc, double l, FILE *fout) {
 	int i;
 	char prtlabels[40] = "";
 	char *varlabel[] = {
@@ -413,6 +413,7 @@ void imprimir_header(int *s, int m, int p, int pt, int ct,
 	fprintf(fout,"# parametros: m = %d (N=%d particulas), ", m, 4*m*m*m);
 	fprintf(fout,"temperatura = %g, ", T);
 	fprintf(fout,"densidad = %g, ", d);
+	fprintf(fout,"lado_caja = %g, ", l);
 	fprintf(fout,"dt = %g, ", dt);
 	fprintf(fout,"rcorte = %g, ", rc);
 	fprintf(fout,"pasos = %d, ", p);
