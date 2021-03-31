@@ -20,5 +20,10 @@ for d in 0.5 0.8 1 1.2 2; do
 done
 ```
 
+Also, the radial distribution function can be plotted (in this example, for 3 different densities while keeping all other parameters constant) can be plotted
 
+```
+gnuplot scripts/plotfdr.gnuplot
+```
 
+![radial distrubution function](examples/fdr-radialdistfunct.png
