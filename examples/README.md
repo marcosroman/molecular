@@ -26,4 +26,4 @@ Also, the radial distribution function can be plotted (in this example, for 3 di
 gnuplot scripts/plotfdr.gnuplot
 ```
 
-![radial distrubution function](examples/fdr-radialdistfunct.png
+![radial distrubution function](examples/fdr-radialdistfunct.png)
