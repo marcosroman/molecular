@@ -11,6 +11,7 @@ done
 ```
 
 We can visualize the effect of the parameters in the dynamics of the system by using the script (again from the main folder)
+
 [This requires gnuplot (interactive plotting program) and ffmpeg (video converter)]
 
 ```
@@ -20,7 +21,9 @@ for d in 0.5 0.8 1 1.2 2; do
 done
 ```
 
-Also, the radial distribution function can be plotted (in this example, for 3 different densities while keeping all other parameters constant) can be plotted
+Also, the [radial distribution function](https://en.wikipedia.org/wiki/Radial_distribution_function) can be plotted
+
+(in this example, for 3 different densities while keeping all other parameters constant)
 
 ```
 gnuplot scripts/plotfdr.gnuplot
