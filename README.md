@@ -12,7 +12,7 @@ las partículas interactuan de a pares mediante el
 ```
 potencial de Lennard-Jones
 
-V_{LJ} (r) = 4*\epsilon*((\sigma/r)^12-(\sigma/r)^6) $
+$ V_{LJ} (r) = 4*\epsilon*((\sigma/r)^12-(\sigma/r)^6) $
 
 (donde r es la distancia entre el par de particulas)
 ```
