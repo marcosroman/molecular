@@ -1,6 +1,8 @@
 molecular
 =========
 
+![simulaciones](./simtilevids.gif)
+
 se simula la dinámica de un conjunto de partículas
 (en una caja 3D, con condiciones periódicas de contorno)
 
