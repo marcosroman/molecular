@@ -10,7 +10,7 @@ using molecular dynamics
 the particles interact in a pairwise fashion via the 
 **Lennard-Jones potential**
 ```math
-V_{LJ} (r) = 4*\epsilon*((\sigma/r)^12-(\sigma/r)^6)
+V_{LJ} (r) = 4 \epsilon ( (\sigma/r)^{12}-(\sigma/r)^{6} )
 ```
 (where $r$ is the pairwise distance)
 
