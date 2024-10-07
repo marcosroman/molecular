@@ -3,25 +3,24 @@ molecular
 
 ![simulaciones](./simtilevids.gif)
 
-se simula la dinámica de un conjunto de partículas
-(en una caja 3D, con condiciones periódicas de contorno)
+simple molecular dynamics simulator
+(particles in a 3D box with periodic boundary conditions)
+using molecular dynamics
 
-mediante dinámica molecular (integración numerica de ecuaciones diferenciales)
-
-
-las partículas interactuan de a pares mediante el
-
+the particles interact in a pairwise fashion
+via the 
 ```
-potencial de Lennard-Jones
+Lennard-Jones potential
 
 $ V_{LJ} (r) = 4*\epsilon*((\sigma/r)^12-(\sigma/r)^6) $
 
-(donde r es la distancia entre el par de particulas)
+(where $r$ is the distance between them)
 ```
 
-el cual modela de forma simplificada una interacción
-	repulsiva a cortas distancias
-	y levemente atractiva distancias mayores
+this simple potential represents an interaction
+that is
+	repulsive at short distances
+ 	and slightly attractive past a fixed treshold
 
 ```
 +--------------------------------------------------------------------+
@@ -44,10 +43,5 @@ el cual modela de forma simplificada una interacción
 0.5     1      1.5     2     2.5      3     3.5     4      4.5     5   sigma
 ```
 
-Trabajo final de la materia Física Computacional @FaMaF-UNC, 2011
-
-
-
-(2021: parsing de argumentos mejorado, entre otros)
-
+[spanish version](./README_esp.md)
 
