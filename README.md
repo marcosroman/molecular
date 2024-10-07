@@ -7,15 +7,12 @@ simple molecular dynamics simulator
 (particles in a 3D box with periodic boundary conditions)
 using molecular dynamics
 
-the particles interact in a pairwise fashion
-via the 
+the particles interact in a pairwise fashion via the 
+**Lennard-Jones potential**
+```math
+V_{LJ} (r) = 4*\epsilon*((\sigma/r)^12-(\sigma/r)^6)
 ```
-Lennard-Jones potential
-
-$ V_{LJ} (r) = 4*\epsilon*((\sigma/r)^12-(\sigma/r)^6) $
-
-(where $r$ is the distance between them)
-```
+(where $r$ is the pairwise distance)
 
 this simple potential represents an interaction
 that is
