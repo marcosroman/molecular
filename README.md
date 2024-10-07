@@ -1,7 +1,7 @@
 molecular
 =========
 
-![simulaciones](./simtilevids.gif)
+![simulations](./simtilevids.gif)
 
 simple molecular dynamics simulator
 (particles in a 3D box with periodic boundary conditions)
@@ -43,5 +43,6 @@ that is
 0.5     1      1.5     2     2.5      3     3.5     4      4.5     5   sigma
 ```
 
-[spanish version](./README_esp.md)
+
+[spanish version](./README_es.md)
 
